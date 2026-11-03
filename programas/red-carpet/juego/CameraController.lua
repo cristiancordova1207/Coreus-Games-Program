@@ -25,8 +25,8 @@ local PRESETS = { -- posición, a dónde mira, FOV
 	boceto = { CAM, LOOK, 70 },       -- el círculo morado del boceto: desde un lado de la gente hacia la alfombra
 	centro = { Vector3.new(0, 7, 42), Vector3.new(0, 5, -60), 58 },
 	cerca = { Vector3.new(0, 4.5, 26), Vector3.new(0, 3, -10), 60 },
-	izquierda = { Vector3.new(-9, 6.5, 40), Vector3.new(2, 3, -30), 62 },
-	derecha = { Vector3.new(9, 6.5, 40), Vector3.new(-2, 3, -30), 62 },
+	izquierda = { Vector3.new(-7, 6.5, 40), Vector3.new(2, 3, -30), 62 },
+	derecha = { Vector3.new(7, 6.5, 40), Vector3.new(-2, 3, -30), 62 },
 	alta = { Vector3.new(0, 30, 48), Vector3.new(0, 0, -30), 62 },
 	salida = { Vector3.new(-5, 7, 30), Vector3.new(0, 4, 60), 60 }, -- la puerta del final
 }
@@ -192,25 +192,25 @@ function SHOT.frente(s, root, t)
 	local a = math.rad(s.side * 28) * math.sin(t * 0.7 + s.seed)
 	local d = math.max(8, H * 2.1)
 	local p = root.Position
-	local c = clampX(p + CFrame.Angles(0, a, 0):VectorToWorldSpace(Vector3.zAxis) * d + Vector3.new(0, H * 0.18, 0), 8.6)
+	local c = clampX(p + CFrame.Angles(0, a, 0):VectorToWorldSpace(Vector3.zAxis) * d + Vector3.new(0, H * 0.18, 0), 6.6)
 	return CFrame.lookAt(c, p + Vector3.new(0, H * 0.06, 0)), 52, d
 end
 function SHOT.lado(s, root, t)
 	local H = bodyHeight(root)
 	local p = root.Position
-	local c = Vector3.new(s.side * 8.7, p.Y + H * 0.1, p.Z + 2.5 + t * 0.2)
+	local c = Vector3.new(s.side * 6.7, p.Y + H * 0.1, p.Z + 2.5 + t * 0.2)
 	return CFrame.lookAt(c, p + Vector3.new(0, H * 0.04, 0)), 56, (c - p).Magnitude
 end
 function SHOT.espalda(s, root, t)
 	local H = bodyHeight(root)
 	local p = root.Position
-	local c = clampX(p + Vector3.new(s.side * 2.5, H * 0.55, -math.max(8, H * 2)), 8.6)
+	local c = clampX(p + Vector3.new(s.side * 2.5, H * 0.55, -math.max(8, H * 2)), 6.6)
 	return CFrame.lookAt(c, p + Vector3.new(0, H * 0.25, 9)), 60, 9
 end
 function SHOT.suelo(s, root, t)
 	local H = bodyHeight(root)
 	local p = root.Position
-	local c = clampX(p + Vector3.new(s.side * 2.2, 0, math.max(6.5, H * 1.7)), 8.6)
+	local c = clampX(p + Vector3.new(s.side * 2.2, 0, math.max(6.5, H * 1.7)), 6.6)
 	c = Vector3.new(c.X, 0.45, c.Z)
 	return CFrame.lookAt(c, p + Vector3.new(0, H * 0.28, 0)), 64, 7
 end
@@ -223,7 +223,7 @@ function SHOT.paparazzi(s, root, t, dt)
 	local H = bodyHeight(root)
 	s.z = (s.z or (root.Position.Z + 9)) + (root.Position.Z + 3 - (s.z or root.Position.Z + 9)) * math.min(1, dt * 0.9)
 	local shake = Vector3.new(math.noise(t * 2.1, s.seed) * 0.35, math.noise(t * 2.4, s.seed + 9) * 0.3, 0)
-	local c = Vector3.new(s.side * 11.8, 5.2, s.z) + shake
+	local c = Vector3.new(s.side * 9.8, 5.2, s.z) + shake
 	return CFrame.lookAt(c, root.Position + Vector3.new(0, H * 0.1, 0) + shake * 0.4), 34, (c - root.Position).Magnitude
 end
 function SHOT.dron(s, root, t)
@@ -254,7 +254,7 @@ function SHOT.heli(s, root, t, dt)
 	local aim = p + Vector3.new(math.noise(t * 1.6, s.seed) * amp * 3, H * 0.04 + math.noise(t * 1.9, s.seed + 5) * amp * 3, 0)
 	return CFrame.lookAt(s.pos, aim), math.max(1.5, fov), d, "heli"
 end
--- cámara de seguridad real del mapa: gira a saltos, hace zoom digital por pasos
+-- cámara de seguridad real del mapa: gira y acerca el zoom sin saltos
 function SHOT.seguridad(s, root, t, dt)
 	local H = bodyHeight(root)
 	if not s.cam then
@@ -284,17 +284,15 @@ function SHOT.seguridad(s, root, t, dt)
 		end
 		CCTV:SetAttribute("Ultima", s.cam.n)
 		s.aim = root.Position
-		s.next = 0
+		s.fov = 62
 	end
 	local pos = s.cam.o.Position
-	if t >= s.next then -- servo: alcanza al personaje a tirones
-		s.next = t + 0.09
-		s.aim = s.aim:Lerp(root.Position + Vector3.new(0, H * 0.1, 0), 0.5)
-	end
+	-- suave cada fotograma: el personaje llega por red a menos Hz que la pantalla, y seguirlo tal cual da tirones
+	s.aim = s.aim:Lerp(root.Position + Vector3.new(0, H * 0.1, 0), 1 - math.exp(-dt * 7))
 	local d = (pos - root.Position).Magnitude
 	local close = 2 * math.deg(math.atan(H * 1.9 / 2 / d))
-	local step = math.clamp(math.floor(t / 0.9), 0, 3) / 3
-	local fov = 62 + (close - 62) * step
+	s.fov += (close - s.fov) * (1 - math.exp(-dt * 1.2))
+	local fov = s.fov
 	camLbl.Text = "CAM 0" .. s.cam.n .. "  ·  RED CARPET"
 	zoomLbl.Text = string.format("x%.1f", 62 / fov)
 	timeLbl.Text = os.date("%d/%m/%Y  %H:%M:%S")
@@ -386,7 +384,7 @@ local function nextShot()
 	if not plan or planI > #plan then plan, planI = makePlan(5), 1 end
 	shot = newShot(plan[planI].name)
 	shot.dur = plan[planI].dur
-	hideNear((shot.name == "paparazzi" or shot.name == "lado") and Vector3.new(shot.side * 12, 5, 0) or nil, 0)
+	hideNear((shot.name == "paparazzi" or shot.name == "lado") and Vector3.new(shot.side * 10, 5, 0) or nil, 0)
 	setHud(nil)
 end
 
