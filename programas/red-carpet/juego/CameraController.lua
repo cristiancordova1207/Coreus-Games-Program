@@ -28,7 +28,19 @@ local PRESETS = { -- posición, a dónde mira, FOV
 	izquierda = { Vector3.new(-9, 6.5, 40), Vector3.new(2, 3, -30), 62 },
 	derecha = { Vector3.new(9, 6.5, 40), Vector3.new(-2, 3, -30), 62 },
 	alta = { Vector3.new(0, 30, 48), Vector3.new(0, 0, -30), 62 },
+	salida = { Vector3.new(-5, 7, 30), Vector3.new(0, 4, 60), 60 }, -- la puerta del final
 }
+
+-- zoom de las cámaras fijas: rueda del ratón (sin el cursor sobre el menú) o botones del menú, atributo CamZoom del jugador
+local zoomNow = 1
+if player:GetAttribute("CamZoom") == nil then player:SetAttribute("CamZoom", 1) end
+UIS.InputChanged:Connect(function(input, processed)
+	if processed or input.UserInputType ~= Enum.UserInputType.MouseWheel then return end
+	local mode = player:GetAttribute("CamMode")
+	if mode == "off" then return end
+	player:SetAttribute("CamZoom", math.clamp((player:GetAttribute("CamZoom") or 1) * (input.Position.Z > 0 and 1.12 or 1 / 1.12), 0.6, 6))
+end)
+local function Z(f) return math.clamp(f / zoomNow, 5, 100) end
 
 -- cámara libre
 local FREE_SPEED = 16
@@ -264,8 +276,13 @@ function SHOT.seguridad(s, root, t, dt)
 				if o then table.insert(list, { o = o, d = (o.Position - root.Position).Magnitude, n = o:GetAttribute("Num") }) end
 			end
 		end
-		table.sort(list, function(a, b) return a.d < b.d end)
-		s.cam = list[rng:NextInteger(1, math.min(3, #list))]
+		-- cualquiera de las que le ven, cerca o lejos; la anterior solo si no hay otra
+		s.cam = list[rng:NextInteger(1, #list)]
+		for _ = 1, 4 do
+			if s.cam.n ~= CCTV:GetAttribute("Ultima") then break end
+			s.cam = list[rng:NextInteger(1, #list)]
+		end
+		CCTV:SetAttribute("Ultima", s.cam.n)
 		s.aim = root.Position
 		s.next = 0
 	end
@@ -467,14 +484,14 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 		if mode == "libre" then freeStep(dt) end
 	elseif mode == "libre" then
-		desired, fov = freeStep(dt), 70 -- durante el cinemático no se mueve: al acabar vuelve aquí
+		desired, fov = freeStep(dt), Z(70) -- durante el cinemático no se mueve: al acabar vuelve aquí
 	elseif type(mode) == "string" and mode:sub(1, 4) == "slot" and typeof(player:GetAttribute("CamSlot" .. mode:sub(5))) == "CFrame" then
-		desired, fov = player:GetAttribute("CamSlot" .. mode:sub(5)), 70
+		desired, fov = player:GetAttribute("CamSlot" .. mode:sub(5)), Z(70)
 	elseif PRESETS[mode] then
 		local p = PRESETS[mode]
-		desired, fov = CFrame.lookAt(p[1], p[2]), p[3]
+		desired, fov = CFrame.lookAt(p[1], p[2]), Z(p[3])
 	else
-		fov = 70
+		fov = Z(70)
 		local w = mode == "follow" and byId(workspace:GetAttribute("LatestWalker"))
 		if w then
 			local p = w.Position
@@ -483,6 +500,7 @@ RunService.RenderStepped:Connect(function(dt)
 			desired = CFrame.lookAt(CAM, LOOK)
 		end
 	end
+	zoomNow += ((player:GetAttribute("CamZoom") or 1) - zoomNow) * math.min(1, dt * 9)
 	if blend < 1 then
 		local k = blend * blend
 		camera.CFrame = camera.CFrame:Lerp(desired, k)

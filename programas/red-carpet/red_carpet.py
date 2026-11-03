@@ -38,7 +38,7 @@ import studio
 
 from account import Account
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 PORT = int(os.environ.get("COREUS_PORT") or 5093)
 OVERLAY_HOST = f"http://carpet.localtest.me:{PORT}"
 UNIVERSE = 10774491686
@@ -112,12 +112,14 @@ DEFAULT_MODES = {  # gift = nombre del regalo de TikTok (lo cambia el usuario en
 }
 DEFAULT_CFG = {"tiktok_user": "", "theme": "cozy-night", "lang": "", "link": "auto", "code": "",
                "roblox_user": "", "roblox_id": 0, "fame": {"on": True, "rate": 60},
-               "walk_gap": 1.5, "cine_gap": 8, "screen": "off", "site": "", "stage_style": "minimal", "paused": False,
+               "walk_gap": 1.5, "cine_gap": 8, "screen": "off", "site": "", "stage_style": "minimal", "stage_floor": "auto", "stage_barrier": "auto", "paused": False,
                "afk": False, "afk_minutes": 5, "auto": {"on": True, "stats": {}},
                "fast_on": 220, "fast_off": 100, "fast_x": 1.3,
                "jam": {"users": [], "auto": False, "every": 5},
                "phone": "", "restart": {"on": False, "at": 179, "on_warn": False, "on_gifts": False, "captcha": True}, "modes": DEFAULT_MODES, "ov": DEFAULT_OV, "ov_version": OV_VERSION, "times_version": TIMES_VERSION, "modes_version": MODES_VERSION}
 STAGE_STYLES = ("minimal", "museo", "cine", "espacio", "pasarela", "vegas", "jardin", "ciudad")  # los mismos que ServerStorage.EscenariosRC del juego
+STAGE_FLOORS = ("auto", "blanco", "negro", "gris", "crema", "rosa", "azul", "verde")  # los de C.FLOORS del juego
+STAGE_BARRIERS = ("auto", "metal", "cuerda", "evento", "cristal", "neon", "seto", "cinta")  # los de C.BARRIERS del juego
 WALK_SECONDS, FLOAT_SECONDS = 20, 28  # lo que tarda en recorrer la alfombra: la fama va por tiempo
 ROBLOX_NAME = re.compile(r"^@?([A-Za-z0-9_]{3,20})$")  # un comentario que es un usuario de Roblox
 NORMAL_MAX, NORMAL_DROP = 400, 200
@@ -701,7 +703,7 @@ def walk(e, kind="normal"):
     tags = (" ⚡" if vip else " 🌹" if prio else "") + (" 🎬" if cine else "")
     paid = fame_gain(e["u"], e["n"], WALK_SECONDS) if (prio or cine) and not e.get("fake") else {}  # la fama es sólo de quien pagó su turno
     push({"k": "w", "n": e["n"], "u": e["u"], "c": cine, "h": prio and not vip, **({"v": True} if vip else {}), **paid, **({"f": fast} if fast != 1 else {})}, None if kind in ("filler", "auto") else f"🚶 {e['n']}{tags}", "walk")
-    ev = {"k": "t", "style": cfg["stage_style"], "text": e["n"] if cfg["screen"] == "walker" and premium_ok() else ""}
+    ev = {"k": "t", "style": cfg["stage_style"], "floor": cfg["stage_floor"], "barrier": cfg["stage_barrier"], "text": e["n"] if cfg["screen"] == "walker" and premium_ok() else ""}
     if ACC.is_admin():  # el link de la pantalla sólo lo cambia el admin (en su servidor); el resto ve el de siempre
         ev["site"] = cfg["site"]
     if ev != state.get("stage_ev") or now - state.get("stage_t", 0) > 30:  # también cada 30 s: si el juego se reinicia, lo recupera
@@ -1430,6 +1432,12 @@ def api_stage():
         ev["color"] = d["color"]
     if d.get("style") in STAGE_STYLES:
         cfg["stage_style"] = ev["style"] = d["style"]
+        save_cfg()
+    if d.get("floor") in STAGE_FLOORS:
+        cfg["stage_floor"] = ev["floor"] = d["floor"]
+        save_cfg()
+    if d.get("barrier") in STAGE_BARRIERS:
+        cfg["stage_barrier"] = ev["barrier"] = d["barrier"]
         save_cfg()
     push(ev)
     return jsonify({"ok": True})

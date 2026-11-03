@@ -43,6 +43,8 @@ for i = 1, POOL do
 	bulbs[i] = { p = p, star = star, glow = glow, light = l }
 end
 local lenses, figs = {}, {}
+local LEGS = { PiernaI = true, PiernaD = true, ZapatoI = true, ZapatoD = true }
+local BODY = { Torso = true, Camisa = true, Pajarita = true }
 local function rebuild()
 	table.clear(lenses)
 	table.clear(figs)
@@ -51,7 +53,22 @@ local function rebuild()
 	end
 	for _, f in ipairs(CS:GetTagged("RCFig")) do
 		if f:IsDescendantOf(workspace) and f.PrimaryPart then
-			table.insert(figs, { m = f, base = f:GetPivot(), z = f.PrimaryPart.Position.Z, x = f.PrimaryPart.Position.X, yaw = 0, kick = 0 })
+			local base, torso = f:GetPivot(), f.PrimaryPart
+			local st = { m = f, base = base, z = torso.Position.Z, x = torso.Position.X, ph = rng:NextNumber(0, 6.28), speed = rng:NextNumber(1.3, 2),
+				yaw = 0, pitch = 0, camYaw = 0, hy = 0, hp = 0, tPitch = 0, tCam = 0, tHy = 0, tHp = 0, until_ = 0, last = os.clock(), parts = {}, rel = {}, kind = {}, out = {} }
+			local tr = base:ToObjectSpace(torso.CFrame)
+			st.hip = (tr * CFrame.new(0, -torso.Size.Y / 2, 0)).Position
+			st.shoulder = (tr * CFrame.new(0, torso.Size.Y / 2 - 0.2, 0)).Position
+			st.neck = st.shoulder
+			for _, d in ipairs(f:GetDescendants()) do
+				if d:IsA("BasePart") and not LEGS[d.Name] then
+					table.insert(st.parts, d)
+					table.insert(st.rel, base:ToObjectSpace(d.CFrame))
+					table.insert(st.kind, BODY[d.Name] and 1 or (d.Name == "Cabeza" or d:IsA("MeshPart") or d.Name:find("^Gorra")) and 2 or 3)
+					if d.Name == "Cabeza" then st.neck = (base:ToObjectSpace(d.CFrame) * CFrame.new(0, -d.Size.Y / 2, 0)).Position end
+				end
+			end
+			table.insert(figs, st)
 		end
 	end
 end
@@ -110,8 +127,24 @@ local function flashStep(now)
 	end
 end
 
--- los paparazzi siguen con la cámara al que pasa (solo los que están cerca, para que no pese)
+-- los paparazzi respiran, miran alrededor, bajan la cámara para ver la foto y la suben cuando alguien pasa.
+-- Las piernas no se mueven; lo demás va por grupos (cuerpo, cabeza, brazos + cámara) con BulkMoveTo, cada uno a unos 20 Hz.
 local figI = 0
+local function pickPose(f, now)
+	local r = rng:NextNumber()
+	if r < 0.4 then -- apunta y encuadra
+		f.tPitch, f.tCam, f.tHy, f.tHp = rng:NextNumber(-0.04, 0.08), rng:NextNumber(-0.16, 0.16), 0, 0
+	elseif r < 0.58 then -- baja la cámara y mira la foto
+		f.tPitch, f.tCam, f.tHy, f.tHp = -0.8, 0, 0, -0.38
+	elseif r < 0.76 then -- baja la cámara y mira alrededor
+		f.tPitch, f.tCam, f.tHy, f.tHp = -0.55, 0, rng:NextNumber(-0.8, 0.8), rng:NextNumber(-0.08, 0.14)
+	elseif r < 0.9 then -- barre con la cámara de un lado a otro
+		f.tPitch, f.tCam, f.tHy, f.tHp = 0.02, (rng:NextInteger(0, 1) * 2 - 1) * rng:NextNumber(0.3, 0.5), 0, 0
+	else -- recoloca el objetivo
+		f.tPitch, f.tCam, f.tHy, f.tHp = -0.28, rng:NextNumber(-0.1, 0.1), 0, -0.14
+	end
+	f.until_ = now + rng:NextNumber(1.6, 4.6)
+end
 local function figStep(now)
 	if #figs == 0 then return end
 	local list = {}
@@ -119,10 +152,13 @@ local function figStep(now)
 		local r = m:FindFirstChild("HumanoidRootPart")
 		if r then table.insert(list, r.Position) end
 	end
-	for _ = 1, 26 do
+	local moved, targets = {}, {}
+	for _ = 1, math.ceil(#figs / 3) do
 		figI = figI % #figs + 1
 		local f = figs[figI]
 		if f.m.Parent then
+			local dt = now - f.last
+			f.last = now
 			local near
 			for _, p in ipairs(list) do
 				if math.abs(p.Z - f.z) < 22 and (not near or math.abs(p.Z - f.z) < math.abs(near.Z - f.z)) then near = p end
@@ -134,16 +170,32 @@ local function figStep(now)
 					local l = f.base:VectorToObjectSpace(to.Unit)
 					want = math.clamp(math.atan2(-l.X, -l.Z), -0.7, 0.7)
 				end
+				f.tPitch, f.tCam, f.tHy, f.tHp = 0.03, 0, 0, 0 -- alguien pasa: a disparar
+				f.until_ = now + rng:NextNumber(0.3, 1.4)
+			elseif now >= f.until_ then
+				pickPose(f, now)
 			end
-			f.yaw += (want - f.yaw) * 0.4
-			local kick = f.m:GetAttribute("Kick") or 0
-			local k = math.clamp(1 - (now - kick) / 0.2, 0, 1)
-			if math.abs(f.yaw) > 0.005 or k > 0 or f.kicked then
-				f.m:PivotTo(f.base * CFrame.Angles(0, f.yaw, 0) * CFrame.new(0, k * 0.1, k * 0.12) * CFrame.Angles(k * 0.05, 0, 0))
-				f.kicked = k > 0
+			local a = 1 - math.exp(-dt * 5)
+			f.yaw += (want - f.yaw) * a
+			f.pitch += (f.tPitch - f.pitch) * a
+			f.camYaw += (f.tCam - f.camYaw) * a
+			f.hy += (f.tHy - f.hy) * a
+			f.hp += (f.tHp - f.hp) * a
+			local k = math.clamp(1 - (now - (f.m:GetAttribute("Kick") or 0)) / 0.2, 0, 1) -- respingo al disparar
+			local br = math.sin(now * f.speed + f.ph)
+			local sway = math.sin(now * 0.55 + f.ph * 2)
+			local hand = math.sin(now * 1.15 + f.ph * 3) * 0.022
+			local U = f.base * CFrame.Angles(0, f.yaw, 0) * CFrame.new(f.hip) * CFrame.Angles(br * 0.016 + k * 0.03, 0, sway * 0.022) * CFrame.new(-f.hip + Vector3.new(0, br * 0.05, 0))
+			local H = U * CFrame.new(f.neck) * CFrame.Angles(f.hp + br * 0.012, f.hy, 0) * CFrame.new(-f.neck)
+			local C = U * CFrame.new(f.shoulder) * CFrame.Angles(f.pitch + hand + k * 0.11, f.camYaw + hand, 0) * CFrame.new(Vector3.new(0, br * 0.025, k * 0.12) - f.shoulder)
+			for i, p in ipairs(f.parts) do
+				local kind = f.kind[i]
+				table.insert(moved, p)
+				table.insert(targets, (kind == 1 and U or kind == 2 and H or C) * f.rel[i])
 			end
 		end
 	end
+	if #moved > 0 then workspace:BulkMoveTo(moved, targets, Enum.BulkMoveMode.FireCFrameChanged) end
 end
 
 -- ---------- saludos ----------

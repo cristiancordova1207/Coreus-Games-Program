@@ -474,6 +474,13 @@ function renderShow() {
     $('#stStyles').dataset.k = sk;
     $('#stStyles').innerHTML = STYLES.map((s) => `<button data-st="${s}" class="${s === S.cfg.stage_style ? 'on' : ''}">${t('style_' + s)}</button>`).join('');
   }
+  for (const [id, list, key, attr, pre] of [['#stFloors', FLOORS, 'stage_floor', 'fl', 'floor_'], ['#stBarriers', BARRIERS, 'stage_barrier', 'ba', 'barrier_']]) {
+    const k = S.cfg[key] + L;
+    if ($(id).dataset.k !== k) {
+      $(id).dataset.k = k;
+      $(id).innerHTML = list.map((s) => `<button data-${attr}="${s}" class="${s === S.cfg[key] ? 'on' : ''}">${t(pre + s)}</button>`).join('');
+    }
+  }
   for (const [id, k] of [['#afkMin', 'afk_minutes'], ['#walkGap', 'walk_gap'], ['#cineGap', 'cine_gap'], ['#adSite', 'site'], ['#fastOn', 'fast_on'], ['#fastOff', 'fast_off'], ['#fastX', 'fast_x']]) if (!typing($(id))) $(id).value = S.cfg[k];
   renderOverlays();
 }
@@ -571,7 +578,11 @@ $('#afkTest').onclick = async () => { const r = await api('/api/test', { kind: '
 $('#stGo').onclick = () => api('/api/stage', { text: $('#stText').value, color: $('#stColor').value });
 $('#stAuto').onclick = () => api('/api/stage', { color: 'auto' });
 const STYLES = ['minimal', 'museo', 'cine', 'espacio', 'pasarela', 'vegas', 'jardin', 'ciudad'];
+const FLOORS = ['auto', 'blanco', 'negro', 'gris', 'crema', 'rosa', 'azul', 'verde'];
+const BARRIERS = ['auto', 'metal', 'cuerda', 'evento', 'cristal', 'neon', 'seto', 'cinta'];
 $('#stStyles').onclick = (e) => { const b = e.target.closest('[data-st]'); if (b) api('/api/stage', { style: b.dataset.st }).then(refresh); };
+$('#stFloors').onclick = (e) => { const b = e.target.closest('[data-fl]'); if (b) api('/api/stage', { floor: b.dataset.fl }).then(refresh); };
+$('#stBarriers').onclick = (e) => { const b = e.target.closest('[data-ba]'); if (b) api('/api/stage', { barrier: b.dataset.ba }).then(refresh); };
 
 refresh();
 setInterval(refresh, 1000);
