@@ -474,12 +474,17 @@ function renderShow() {
     $('#stStyles').dataset.k = sk;
     $('#stStyles').innerHTML = STYLES.map((s) => `<button data-st="${s}" class="${s === S.cfg.stage_style ? 'on' : ''}">${t('style_' + s)}</button>`).join('');
   }
-  for (const [id, list, key, attr, pre] of [['#stFloors', FLOORS, 'stage_floor', 'fl', 'floor_'], ['#stBarriers', BARRIERS, 'stage_barrier', 'ba', 'barrier_'], ['#stMarks', MARKS, 'stage_marks', 'mk', 'marks_']]) {
+  for (const [id, list, key, attr, pre] of [['#stFloors', FLOORS, 'stage_floor', 'fl', 'floor_'], ['#stBarriers', BARRIERS, 'stage_barrier', 'ba', 'barrier_'], ['#stMarks', MARKS, 'stage_marks', 'mk', 'marks_'], ['#stNight', NIGHT, 'stage_night', 'ni', 'night_'], ['#stEvery', ROT_TIMES, 'rot_every', 're', 'every_']]) {
     const k = S.cfg[key] + L;
     if ($(id).dataset.k !== k) {
       $(id).dataset.k = k;
       $(id).innerHTML = list.map((s) => `<button data-${attr}="${s}" class="${s === S.cfg[key] ? 'on' : ''}">${t(pre + s)}</button>`).join('');
     }
+  }
+  const rk = S.cfg.rot_off.join() + L;
+  if ($('#stRot').dataset.k !== rk) {
+    $('#stRot').dataset.k = rk;
+    $('#stRot').innerHTML = STYLES.map((s) => `<button data-ro="${s}" class="${S.cfg.rot_off.includes(s) ? '' : 'on'}">${S.cfg.rot_off.includes(s) ? '☐' : '☑'} ${t('style_' + s)}</button>`).join('');
   }
   for (const [id, k] of [['#afkMin', 'afk_minutes'], ['#walkGap', 'walk_gap'], ['#cineGap', 'cine_gap'], ['#adSite', 'site'], ['#fastOn', 'fast_on'], ['#fastOff', 'fast_off'], ['#fastX', 'fast_x']]) if (!typing($(id))) $(id).value = S.cfg[k];
   renderOverlays();
@@ -579,12 +584,17 @@ $('#stGo').onclick = () => api('/api/stage', { text: $('#stText').value, color: 
 $('#stAuto').onclick = () => api('/api/stage', { color: 'auto' });
 const STYLES = ['minimal', 'museo', 'cine', 'espacio', 'pasarela', 'vegas', 'jardin', 'ciudad'];
 const FLOORS = ['auto', 'blanco', 'negro', 'gris', 'crema', 'rosa', 'azul', 'verde'];
-const BARRIERS = ['auto', 'metal', 'cuerda', 'evento', 'cristal', 'neon', 'seto', 'cinta'];
+const BARRIERS = ['auto', 'metal', 'cuerda', 'evento', 'cristal', 'neon', 'seto', 'cinta', 'ninguna'];
 const MARKS = ['si', 'no'];
+const NIGHT = ['dia', 'noche'];
+const ROT_TIMES = [0, 1, 2, 5, 10];
 $('#stStyles').onclick = (e) => { const b = e.target.closest('[data-st]'); if (b) api('/api/stage', { style: b.dataset.st }).then(refresh); };
 $('#stFloors').onclick = (e) => { const b = e.target.closest('[data-fl]'); if (b) api('/api/stage', { floor: b.dataset.fl }).then(refresh); };
 $('#stBarriers').onclick = (e) => { const b = e.target.closest('[data-ba]'); if (b) api('/api/stage', { barrier: b.dataset.ba }).then(refresh); };
 $('#stMarks').onclick = (e) => { const b = e.target.closest('[data-mk]'); if (b) api('/api/stage', { marks: b.dataset.mk }).then(refresh); };
+$('#stNight').onclick = (e) => { const b = e.target.closest('[data-ni]'); if (b) api('/api/stage', { night: b.dataset.ni }).then(refresh); };
+$('#stRot').onclick = (e) => { const b = e.target.closest('[data-ro]'); if (b) api('/api/stage', { rot_toggle: b.dataset.ro }).then(refresh); };
+$('#stEvery').onclick = (e) => { const b = e.target.closest('[data-re]'); if (b) api('/api/stage', { rot_every: Number(b.dataset.re) }).then(refresh); };
 
 refresh();
 setInterval(refresh, 1000);

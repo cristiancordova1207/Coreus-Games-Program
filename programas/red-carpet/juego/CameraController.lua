@@ -103,13 +103,13 @@ local function lab(parent, txt, pos, anchor, size, color)
 end
 local secHud = Instance.new("Frame")
 secHud.BackgroundTransparency, secHud.Size, secHud.Parent = 1, UDim2.fromScale(1, 1), gui
-local camLbl = lab(secHud, "CAM 01", UDim2.fromScale(0.03, 0.04), nil, UDim2.fromScale(0.26, 0.05))
+local camLbl = lab(secHud, "CAM 01", UDim2.fromScale(0.04, 0.05), nil, UDim2.fromScale(0.66, 0.035))
 camLbl.TextXAlignment = Enum.TextXAlignment.Left
-local recLbl = lab(secHud, "● REC", UDim2.fromScale(0.97, 0.04), Vector2.new(1, 0), UDim2.fromScale(0.16, 0.05), Color3.fromRGB(255, 60, 60))
+local recLbl = lab(secHud, "● REC", UDim2.fromScale(0.96, 0.05), Vector2.new(1, 0), UDim2.fromScale(0.24, 0.035), Color3.fromRGB(255, 60, 60))
 recLbl.TextXAlignment = Enum.TextXAlignment.Right
-local timeLbl = lab(secHud, "", UDim2.fromScale(0.03, 0.93), nil, UDim2.fromScale(0.4, 0.04))
+local timeLbl = lab(secHud, "", UDim2.fromScale(0.04, 0.92), nil, UDim2.fromScale(0.7, 0.03))
 timeLbl.TextXAlignment = Enum.TextXAlignment.Left
-local zoomLbl = lab(secHud, "x1.0", UDim2.fromScale(0.97, 0.93), Vector2.new(1, 0), UDim2.fromScale(0.16, 0.04))
+local zoomLbl = lab(secHud, "x1.0", UDim2.fromScale(0.96, 0.92), Vector2.new(1, 0), UDim2.fromScale(0.2, 0.03))
 zoomLbl.TextXAlignment = Enum.TextXAlignment.Right
 for i = 0, 35 do -- líneas de la imagen de vigilancia
 	local f = Instance.new("Frame")
@@ -118,6 +118,8 @@ for i = 0, 35 do -- líneas de la imagen de vigilancia
 end
 local box = Instance.new("Frame") -- recuadro de seguimiento
 box.BackgroundTransparency, box.AnchorPoint, box.Position, box.Size, box.Parent = 1, Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.24, 0.48), secHud
+local boxR = Instance.new("UIAspectRatioConstraint") -- el mismo recuadro en vertical y en horizontal
+boxR.AspectRatio, boxR.DominantAxis, boxR.Parent = 0.5, Enum.DominantAxis.Height, box
 local boxS = Instance.new("UIStroke")
 boxS.Color, boxS.Thickness, boxS.Transparency, boxS.Parent = Color3.fromRGB(120, 255, 150), 1.5, 0.25, box
 local heliHud = Instance.new("Frame")
@@ -127,7 +129,7 @@ for _, e in ipairs({ { 0, Vector2.zero }, { 1, Vector2.new(0, 1) } }) do
 	bar.BackgroundColor3, bar.BorderSizePixel, bar.Size, bar.AnchorPoint, bar.Position = Color3.new(), 0, UDim2.fromScale(1, 0.1), e[2], UDim2.fromScale(0, e[1])
 	bar.Parent = heliHud
 end
-local heliLbl = lab(heliHud, "AERIAL LIVE", UDim2.fromScale(0.03, 0.115), nil, UDim2.fromScale(0.26, 0.04), Color3.fromRGB(255, 225, 150))
+local heliLbl = lab(heliHud, "AERIAL LIVE", UDim2.fromScale(0.04, 0.115), nil, UDim2.fromScale(0.6, 0.03), Color3.fromRGB(255, 225, 150))
 heliLbl.TextXAlignment = Enum.TextXAlignment.Left
 local cross = lab(heliHud, "+", UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5), UDim2.fromScale(0.05, 0.08), Color3.fromRGB(255, 225, 150))
 cross.TextTransparency = 0.45
@@ -187,6 +189,9 @@ local rng = Random.new()
 local function clampX(v, m) return Vector3.new(math.clamp(v.X, -m, m), v.Y, v.Z) end
 local function pick(t) return t[rng:NextInteger(1, #t)] end
 local SHOT = {}
+local heliRay = RaycastParams.new() -- la gente no cuenta como obstáculo
+heliRay.FilterType = Enum.RaycastFilterType.Exclude
+heliRay.FilterDescendantsInstances = { workspace:WaitForChild("Avatares") }
 function SHOT.frente(s, root, t)
 	local H = bodyHeight(root)
 	local a = math.rad(s.side * 28) * math.sin(t * 0.7 + s.seed)
@@ -224,7 +229,7 @@ function SHOT.paparazzi(s, root, t, dt)
 	s.z = (s.z or (root.Position.Z + 9)) + (root.Position.Z + 3 - (s.z or root.Position.Z + 9)) * math.min(1, dt * 0.9)
 	local shake = Vector3.new(math.noise(t * 2.1, s.seed) * 0.35, math.noise(t * 2.4, s.seed + 9) * 0.3, 0)
 	local c = Vector3.new(s.side * 9.8, 5.2, s.z) + shake
-	return CFrame.lookAt(c, root.Position + Vector3.new(0, H * 0.1, 0) + shake * 0.4), 34, (c - root.Position).Magnitude
+	return CFrame.lookAt(c, root.Position + Vector3.new(0, H * 0.22, 0) + shake * 0.4), 44, (c - root.Position).Magnitude
 end
 function SHOT.dron(s, root, t)
 	local H = bodyHeight(root)
@@ -238,12 +243,17 @@ end
 function SHOT.heli(s, root, t, dt)
 	local H = bodyHeight(root)
 	local interior = workspace:GetAttribute("Interior") == true
-	s.h = s.h or (interior and 28 or rng:NextNumber(85, 135))
-	s.dx = s.dx or (interior and rng:NextNumber(4, 8) or rng:NextNumber(10, 28)) * s.side
-	s.dz = s.dz or (interior and 58 or rng:NextNumber(60, 120)) * s.front
 	local p = root.Position
 	-- el helicóptero se mueve despacio con su propio retraso; la vista va con vibración
-	s.pos = s.pos or Vector3.new(s.dx, s.h, math.max(p.Z + s.dz, -98))
+	-- con tanto zoom, cualquier pieza en medio llena la pantalla: busca un sitio desde el que se le vea
+	for _ = 1, s.pos and 0 or 8 do
+		s.h = interior and 28 or rng:NextNumber(85, 135)
+		s.dx = (interior and rng:NextNumber(4, 8) or rng:NextNumber(10, 28)) * s.side
+		s.dz = (interior and 58 or rng:NextNumber(60, 120)) * s.front
+		s.pos = Vector3.new(s.dx, s.h, math.max(p.Z + s.dz, -98))
+		local hit = workspace:Raycast(s.pos, p - s.pos, heliRay)
+		if not hit then break end
+	end
 	s.pos += Vector3.new(s.side * dt * 1.4, 0, dt * 7)
 	local d = (s.pos - p).Magnitude
 	local close = 2 * math.deg(math.atan(H * 1.6 / 2 / d))
@@ -335,15 +345,16 @@ local function makePlan(total)
 end
 
 -- sesión de fotos: cortes rápidos entre los fotógrafos que le rodean
-local photoShots = { "hombro", "orbita", "suelo", "hombro", "cara", "orbita" }
+local photoShots = { "hombro", "sala", "reves", "cara", "hombro", "orbita", "suelo" }
 local function photoShot(root, t, n)
 	local p, H = root.Position, bodyHeight(root)
 	local kind = photoShots[n % #photoShots + 1]
 	local look = root.CFrame.LookVector
 	local right = root.CFrame.RightVector
-	if kind == "hombro" then -- por encima del hombro de un fotógrafo
+	if kind == "hombro" then -- por encima del hombro de un fotógrafo de la primera fila
 		local f = workspace:FindFirstChild("SesionFotos")
-		local list = f and f:GetChildren() or {}
+		local list = {}
+		for _, c in ipairs(f and f:GetChildren() or {}) do if c:GetAttribute("Fila") == 1 and math.abs(c:GetPivot().Position.X - p.X) < 7 then table.insert(list, c) end end
 		local m = #list > 0 and list[n % #list + 1]
 		if m and m.PrimaryPart then
 			local q = m.PrimaryPart.CFrame
@@ -354,9 +365,14 @@ local function photoShot(root, t, n)
 		return CFrame.lookAt(p + look * 7 + right * 2 + Vector3.new(0, -p.Y + 0.5, 0), p + Vector3.new(0, H * 0.25, 0)), 60
 	elseif kind == "cara" then
 		return CFrame.lookAt(p + look * (H * 0.9) + right * 0.6 + Vector3.new(0, H * 0.3, 0), p + Vector3.new(0, H * 0.3, 0)), 42
+	elseif kind == "sala" then -- desde el fondo, por encima de todos los fotógrafos
+		return CFrame.lookAt(p + look * 21 + Vector3.new(0, 9, 0), p + Vector3.new(0, H * 0.1, 0)), 40
+	elseif kind == "reves" then -- desde detrás de él, con los fotógrafos disparando delante
+		return CFrame.lookAt(p - look * 4.5 + right * 1.2 + Vector3.new(0, H * 0.35, 0), p + look * 12 + Vector3.new(0, 2, 0)), 66
 	end
-	local a = t * 0.8 + n
-	return CFrame.lookAt(p + Vector3.new(math.sin(a) * 11, 3.2, math.cos(a) * 11), p + Vector3.new(0, H * 0.08, 0)), 50
+	-- solo por delante: detrás está el fondo de la sala
+	local a = math.sin(t * 0.8 + n) * 0.9
+	return CFrame.lookAt(p + Vector3.new(math.sin(a) * 7, 3.2, math.cos(a) * 7), p + Vector3.new(0, H * 0.08, 0)), 58
 end
 
 -- modo fiesta: planos que van cambiando
@@ -412,7 +428,7 @@ RunService.RenderStepped:Connect(function(dt)
 	local pshot = party and tick % #PARTY_SHOTS + 1 or 0
 	local key = photo and "foto" or giant and "g" or root and "c" or party and ("p" .. pshot) or "m"
 	if key ~= shotKey then -- cambia de plano: transición suave, menos al acabar un cinemático, que corta directo
-		if shotKey then blend = (shotKey == "c" or shotKey == "g" or shotKey == "foto") and 1 or 0 end
+		if shotKey then blend = (key == "foto" or shotKey == "c" or shotKey == "g" or shotKey == "foto") and 1 or 0 end -- la sala de fotos está en otro sitio: siempre corte
 		if key == "g" or key == "foto" then giantStart = os.clock() photoN, photoCut = 0, os.clock() end
 		shotKey = key
 		if key ~= "c" then setHud(nil) hideNear(nil) end
@@ -447,7 +463,7 @@ RunService.RenderStepped:Connect(function(dt)
 		if sesion and os.clock() - photoHide > 0.2 then
 			photoHide = os.clock()
 			for _, m in ipairs(sesion:GetChildren()) do
-				local near = (m:GetPivot().Position * Vector3.new(1, 0, 1) - desired.Position * Vector3.new(1, 0, 1)).Magnitude < 9
+				local near = (m:GetPivot().Position * Vector3.new(1, 0, 1) - desired.Position * Vector3.new(1, 0, 1)).Magnitude < 4.5
 				for _, d in ipairs(m:GetDescendants()) do
 					if d:IsA("BasePart") then d.LocalTransparencyModifier = near and 1 or 0 end
 				end

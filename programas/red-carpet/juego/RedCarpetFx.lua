@@ -378,6 +378,17 @@ whiteGui.Name, whiteGui.IgnoreGuiInset, whiteGui.ResetOnSpawn, whiteGui.DisplayO
 whiteGui.Parent = player:WaitForChild("PlayerGui")
 local white = Instance.new("Frame")
 white.BackgroundColor3, white.BackgroundTransparency, white.Size, white.Parent = Color3.new(1, 1, 1), 1, UDim2.fromScale(1, 1), whiteGui
+-- al cambiar de escenario: flash de cámara, el servidor cambia el mapa con la pantalla en blanco
+local shutter = Instance.new("Sound")
+shutter.SoundId, shutter.Volume, shutter.Parent = "rbxasset://sounds/clickfast.wav", 1, whiteGui
+workspace:GetAttributeChangedSignal("StyleFlash"):Connect(function()
+	shutter:Play()
+	white.BackgroundTransparency = 1
+	TweenService:Create(white, TweenInfo.new(0.12), { BackgroundTransparency = 0 }):Play()
+	task.delay(0.8, function()
+		TweenService:Create(white, TweenInfo.new(0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
+	end)
+end)
 local lastShot = 0
 local function photoStep(now)
 	local id = workspace:GetAttribute("PhotoCine")
