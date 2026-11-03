@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Red Carpet · overlay</title>
+<!-- Un solo archivo para todos los overlays: /o/all (todo junto) o uno por sección: /o/title, /o/lobby, /o/now, /o/queue, /o/modes, /o/donors.
+     ?edit=1 = vista previa del panel (arrastrar y rueda). -->
+<style>
+@font-face { font-family: "Lilita One"; src: url(/ui/fonts/LilitaOne.woff2) format("woff2"); }
+@font-face { font-family: Fredoka; src: url(/ui/fonts/Fredoka.woff2) format("woff2"); font-weight: 300 700; }
+@font-face { font-family: "Press Start 2P"; src: url(/ui/fonts/PressStart2P.woff2) format("woff2"); }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+body { font-family: Fredoka, system-ui, sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+.el { position: absolute; transform: translate(-50%, -50%); white-space: nowrap; text-align: center; line-height: 1.1;
+  -webkit-text-stroke: .09em #120d1c; paint-order: stroke fill; text-shadow: 0 .06em .14em rgba(0,0,0,.45); }
+.edit .el { outline: 2px dashed rgba(255,255,255,.5); outline-offset: 6px; cursor: grab; user-select: none; }
+.edit .el:hover { outline-color: #25f4ee; }
+.edit .el.drag { cursor: grabbing; outline-color: #fe2c55; }
+.badge { display: inline-flex; align-items: center; gap: .25em; margin-left: .3em; font-size: .62em; padding: .12em .45em; border-radius: 99px;
+  background: #fe2c55; -webkit-text-stroke: 0; vertical-align: middle; }
+.badge img, .row img { width: 1.3em; height: 1.3em; object-fit: contain; }
+.list { text-align: left; }
+.list .row { display: flex; align-items: center; gap: .4em; margin-top: .25em; }
+.list .n { font-size: .8em; opacity: .7; min-width: 1.4em; }
+.panel { background: rgba(18, 13, 28, .78); border-radius: .7em; padding: .5em .8em; -webkit-text-stroke: 0; text-shadow: none;
+  box-shadow: 0 .3em 1em rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.08); }
+.panel .row { display: flex; align-items: center; gap: .55em; padding: .22em 0; }
+.panel .row img { width: 1.6em; height: 1.6em; }
+.panel .row .lb { letter-spacing: .04em; }
+.panel .row .s { margin-left: auto; font-size: .7em; padding: .1em .45em; border-radius: 99px; background: #fe2c55; }
+/* tarjeta del donante (como la referencia): avatar con aro, estrella + nombre, @usuario, seguidos/seguidores */
+.card { display: flex; align-items: center; gap: 22px; padding: 18px 30px 18px 18px; border-radius: 26px; background: rgba(14, 12, 22, .82);
+  -webkit-text-stroke: 0; text-shadow: none; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.card .av { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 6px solid var(--accent); background: #2a2238;
+  box-shadow: 0 0 22px var(--accent); flex: none; display: grid; place-items: center; font-size: 54px; }
+.card .nm { font-size: 40px; font-weight: 700; }
+.card .nm::before { content: "★ "; color: var(--accent); }
+.card .hd { font-size: 24px; opacity: .75; margin-top: 2px; }
+.card .ff { font-size: 22px; margin-top: 10px; display: flex; gap: 24px; }
+.card .ff b { color: var(--accent); }
+.card .gf { display: flex; align-items: center; gap: 8px; font-size: 22px; margin-top: 6px; opacity: .9; }
+.card .gf img { width: 34px; height: 34px; }
+.slide { animation: slide .55s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes slide { from { opacity: 0; transform: translateY(30px) scale(.92); } }
+.pop { animation: pop .5s cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } }
+/* animación de regalo: el regalo salta girando con rayos detrás, chispas y el nombre debajo */
+.ga { position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px; animation: gaIn .6s cubic-bezier(.34,1.56,.64,1), gaOut .45s ease-in forwards var(--out, 3.5s); }
+@keyframes gaIn { from { transform: scale(.3) translateY(60px); opacity: 0; } }
+@keyframes gaOut { to { transform: scale(.7) translateY(-40px); opacity: 0; } }
+.ga .stage { position: relative; width: 260px; height: 260px; display: grid; place-items: center; }
+.ga .rays { position: absolute; inset: -40px; border-radius: 50%; animation: spin 6s linear infinite;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--accent) 55%, transparent) 0 10deg, transparent 10deg 24deg);
+  -webkit-mask: radial-gradient(circle, #000 25%, transparent 68%); mask: radial-gradient(circle, #000 25%, transparent 68%); }
+.ga .glow { position: absolute; width: 190px; height: 190px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 70%, #fff) 0%, transparent 70%);
+  animation: pulse 1.1s ease-in-out infinite; }
+.ga .gift { position: relative; width: 190px; height: 190px; object-fit: contain; filter: drop-shadow(0 10px 18px rgba(0,0,0,.5));
+  animation: giftPop 1s cubic-bezier(.34,1.56,.64,1), bob 1.6s ease-in-out 1s infinite; }
+.ga .emoji { font-size: 150px; }
+@keyframes giftPop { 0% { transform: scale(0) rotate(-200deg); } 70% { transform: scale(1.18) rotate(12deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes bob { 50% { transform: translateY(-12px) rotate(-4deg) scale(1.04); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse { 50% { transform: scale(1.18); opacity: .7; } }
+.ga .spark { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--c);
+  box-shadow: 0 0 12px var(--c); animation: spark 1.1s cubic-bezier(.1,.8,.3,1) forwards; animation-delay: var(--d); opacity: 0; }
+@keyframes spark { 0% { transform: translate(-50%,-50%) scale(.4); opacity: 1; } 100% { transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(0); opacity: 0; } }
+.ga .who { display: flex; align-items: center; gap: 14px; }
+.ga .who img, .ga .who .av0 { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent); background: #2a2238;
+  display: grid; place-items: center; font-size: 30px; -webkit-text-stroke: 0; }
+.ga .txt { font-size: 1em; }
+.ga .cnt { display: inline-block; color: var(--accent); font-size: 1.35em; margin-left: .2em; animation: cnt .5s cubic-bezier(.34,1.56,.64,1) .5s both; }
+@keyframes cnt { from { transform: scale(2.4); opacity: 0; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const VIEW = location.pathname.split('/').pop() || 'title';
+const FF = { es: ['Siguiendo', 'Seguidores'], en: ['Following', 'Followers'] };
+const EDIT = new URLSearchParams(location.search).has('edit');
+if (EDIT) document.body.classList.add('edit');
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : String(n || 0);
+const SAMPLE = { now: { n: 'Builderman', u: 'fan', prio: true, cine: false }, queue: [{ n: 'Roblox', prio: true }, { n: 'Shedletsky', cine: true }, { n: 'Linkmon99' }],
+  donors: [{ nick: 'Wylo', uid: 'wylo', avatar: '', followers: 12400, following: 180, coins: 30, gift: 'Rose' }] };
+const LOCAL_FONTS = ['Lilita One', 'Fredoka', 'Press Start 2P'];
+const loaded = new Set();
+function font(f) { // las demás fuentes vienen de Google Fonts (TikTok LIVE Studio tiene internet)
+  if (!f || LOCAL_FONTS.includes(f) || loaded.has(f)) return;
+  loaded.add(f);
+  const l = document.createElement('link');
+  l.rel = 'stylesheet'; l.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(f)}:wght@400;700&display=swap`;
+  document.head.appendChild(l);
+}
+let D = null, donorIdx = 0, donorAt = 0, lastDonorKey = '', dragging = null;
+
+function box(name, e, html, extra = '') {
+  if (!e || (!e.show && !EDIT)) return '';
+  font(e.font);
+  const style = `left:${e.x}%;top:${e.y}%;font-family:'${e.font}',Fredoka,sans-serif;color:${e.color};font-size:${e.size}px;${e.show ? '' : 'opacity:.3;'}${extra}`;
+  return `<div class="el" data-el="${name}" style="${style}">${html}</div>`;
+}
+const giftImg = (key) => { const m = D.modes.find((x) => x.key === key); return m && m.img ? `<img src="${esc(m.img)}">` : ''; };
+const modeLabel = (key) => (D.modes.find((x) => x.key === key) || {}).label || '';
+
+function modesList(e, panel) {
+  const rows = D.modes.filter((m) => m.on && m.gift).map((m) => `<div class="row">${m.img ? `<img src="${esc(m.img)}">` : '🎁'}<span class="lb">${esc(m.label)}</span>${
+    m.key === 'party' && D.party ? `<span class="s">${D.party}s</span>` : ''}</div>`).join('');
+  return rows ? `<div class="${panel ? 'panel' : 'list'}">${rows}</div>` : '';
+}
+
+// una función por overlay (cada sección es su propia fuente en TikTok LIVE Studio)
+const VIEWS = {
+  title: (o) => box('title', o.title, esc(o.title.text)) + box('subtitle', o.subtitle, esc(o.subtitle.text)),
+  lobby: (o) => box('lobby', o.lobby, esc(o.lobby.text.replace('{n}', D.lobby))),
+  now(o) {
+    const now = D.now || (EDIT ? SAMPLE.now : null);
+    if (!now) return '';
+    const badges = (now.prio ? `<span class="badge">${giftImg('priority')}${esc(modeLabel('priority'))}</span>` : '')
+      + (now.cine ? `<span class="badge" style="background:#7c3aed">${giftImg('cinematic')}${esc(modeLabel('cinematic'))}</span>` : '');
+    return box('now', o.now, `<span class="pop" style="display:inline-block" data-k="${esc(now.n)}">${esc(o.now.text.replace('{name}', now.n))}</span>${badges}`);
+  },
+  queue(o) {
+    const q = D.queue.length || !EDIT ? D.queue : SAMPLE.queue;
+    if (!q.length) return '';
+    return box('queue', o.queue, `<div class="list"><div>${esc(o.queue.text)}</div>${q.slice(0, o.queue.max || 5).map((e, i) =>
+      `<div class="row"><span class="n">${i + 1}.</span>${esc(e.n)}${e.prio ? giftImg('priority') : ''}${e.cine ? giftImg('cinematic') : ''}</div>`).join('')}</div>`, 'transform:translate(-50%,0)');
+  },
+  modes: (o) => box('modes', o.modes, modesList(o.modes, true)),
+  donors: (o) => donors(o),
+  alerts: (o) => giftAlert(o),
+  all: (o) => ['title', 'lobby', 'now', 'queue', 'modes', 'donors'].map((v) => VIEWS[v](o)).join(''), // todo junto
+};
+
+// animación de regalos: cada regalo nuevo sale uno detrás de otro (los de antes de abrir el overlay no)
+let giftSeen = null, giftCur = null, giftUntil = 0;
+const giftQ = [];
+const SAMPLE_GIFT = { id: 's', nick: 'Wylo', avatar: '', gift: 'Rose', img: '', n: 5 };
+function giftAlert(o) {
+  const e = o.alert, now = Date.now(), secs = Math.max(2, e.every || 4);
+  if (giftSeen === null) giftSeen = Math.max(0, ...D.gifts.map((g) => g.id)); // al abrir: nada de lo viejo
+  for (const g of D.gifts) if (g.id > giftSeen) { giftQ.push(g); giftSeen = g.id; }
+  if (now > giftUntil) { giftCur = giftQ.shift() || null; giftUntil = giftCur ? now + secs * 1000 : 0; }
+  if (giftQ.length > 30) giftQ.splice(0, giftQ.length - 30); // ponytail: con muchísimos regalos se saltan los más viejos
+  const g = giftCur || (EDIT ? SAMPLE_GIFT : null);
+  if (!g) return '';
+  const m = D.modes.find((x) => x.gift && g.gift && x.gift.toLowerCase() === g.gift.toLowerCase());
+  const img = g.img || (m && m.img);
+  const cols = ['#fe2c55', '#25f4ee', '#ffd23f', '#b9a6f6', '#9ee6df', '#f6b8d1'];
+  const sparks = Array.from({ length: 14 }, (_, i) => { const a = i / 14 * Math.PI * 2, r = 150 + (i % 3) * 40;
+    return `<i class="spark" style="--c:${cols[i % cols.length]};--x:${Math.cos(a) * r}px;--y:${Math.sin(a) * r}px;--d:${(i % 4) * 0.06}s"></i>`; }).join('');
+  const text = esc(e.text).replace('{name}', `<b>${esc(g.nick)}</b>`).replace('{gift}', esc(g.gift)).replace(/\s*x?\{n\}/, '');
+  const av = g.avatar ? `<img src="${esc(g.avatar)}" referrerpolicy="no-referrer">` : '<span class="av0">👤</span>';
+  return box('alert', e, `<div class="ga" data-g="${esc(g.id)}" style="--accent:${e.accent || '#fe2c55'};--out:${secs - 0.45}s">
+      <div class="stage"><div class="rays"></div><div class="glow"></div>${img ? `<img class="gift" src="${esc(img)}">` : '<span class="gift emoji">🎁</span>'}${sparks}</div>
+      <div class="who">${av}<span class="txt">${text}<span class="cnt">x${g.n}</span></span></div></div>`,
+    `transform:translate(-50%,-50%) scale(${e.size / 100});font-size:40px`);
+}
+
+function donors(o) {
+  const e = o.card, list = D.donors.length ? D.donors : EDIT ? SAMPLE.donors : [];
+  if (!list.length) return '';
+  const now = Date.now();
+  if (now - donorAt > (e.every || 5) * 1000) { donorIdx = (donorIdx + 1) % list.length; donorAt = now; }
+  const d = list[donorIdx % list.length];
+  const g = D.modes.find((m) => m.gift && d.gift && m.gift.toLowerCase() === d.gift.toLowerCase());
+  const key = d.uid + donorIdx;
+  const cls = key !== lastDonorKey ? 'card slide' : 'card';
+  lastDonorKey = key;
+  const av = d.avatar ? `<img class="av" src="${esc(d.avatar)}" referrerpolicy="no-referrer">` : `<div class="av">👤</div>`;
+  return box('card', e, `<div class="${cls}" style="--accent:${e.accent || '#2ee6d6'}">${av}<div>
+      <div class="nm">${esc(d.nick)}</div><div class="hd">@${esc(d.uid)}</div>
+      <div class="ff"><span><b>${fmt(d.following)}</b> ${(FF[D.lang] || FF.en)[0]}</span><span><b>${fmt(d.followers)}</b> ${(FF[D.lang] || FF.en)[1]}</span></div>
+      <div class="gf">${g && g.img ? `<img src="${esc(g.img)}">` : '🎁'} ${esc(d.gift || '')} · 🪙 ${d.coins}</div></div></div>`,
+    `transform:translate(-50%,-50%) scale(${e.size / 100});font-size:16px`);
+}
+
+function draw() {
+  if (!D || dragging) return;
+  const o = D.ov[VIEW];
+  if (!o || !VIEWS[VIEW]) return;
+  const html = VIEWS[VIEW](o);
+  const root = document.getElementById('root');
+  // sólo se repinta lo que cambia (si no, las animaciones se repetirían cada segundo)
+  if (root.dataset.h !== html) { root.innerHTML = html; root.dataset.h = html; }
+}
+async function poll() {
+  try { D = await (await fetch('/api/overlay', { cache: 'no-store' })).json(); draw(); } catch {}
+}
+poll();
+setInterval(poll, 1000);
+if (VIEW === 'alerts') setInterval(draw, 200); // la cola de regalos avanza entre lecturas
+
+// ---------- edición (sólo en la vista previa del panel) ----------
+function save(name, patch) {
+  return fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ov: { [VIEW]: { [name]: patch } } }) }).then(poll);
+}
+if (EDIT) {
+  document.addEventListener('pointerdown', (ev) => {
+    const el = ev.target.closest('.el');
+    if (!el) return;
+    dragging = { el, name: el.dataset.el };
+    el.classList.add('drag');
+    el.setPointerCapture(ev.pointerId);
+  });
+  document.addEventListener('pointermove', (ev) => {
+    if (!dragging) return;
+    dragging.x = Math.round(ev.clientX / innerWidth * 1000) / 10;
+    dragging.y = Math.round(ev.clientY / innerHeight * 1000) / 10;
+    dragging.el.style.left = dragging.x + '%';
+    dragging.el.style.top = dragging.y + '%';
+  });
+  document.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    const d = dragging;
+    d.el.classList.remove('drag');
+    dragging = null;
+    if (d.x !== undefined) save(d.name, { x: d.x, y: d.y });
+  });
+  document.addEventListener('wheel', (ev) => {
+    const el = ev.target.closest('.el');
+    if (!el || !D) return;
+    ev.preventDefault();
+    const cur = D.ov[VIEW][el.dataset.el].size;
+    save(el.dataset.el, { size: Math.max(6, Math.round(cur * (ev.deltaY < 0 ? 1.08 : 0.93))) });
+  }, { passive: false });
+}
+</script>
+</body>
+</html>

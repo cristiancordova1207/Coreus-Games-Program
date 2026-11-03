@@ -11,7 +11,7 @@ const os = require('os');
 const path = require('path');
 const { GAMES, gameById, instanceDirName, stateInfo, nextName, setConfigUser } = require('./lib');
 
-const ROOT = path.join(os.homedir(), 'CoreusGames'); // fuera de AppData: las apps empaquetadas la redirigen
+const ROOT = process.env.COREUS_HOME || path.join(os.homedir(), 'CoreusGames'); // fuera de AppData: las apps empaquetadas la redirigen
 const PROGRAMS = path.join(ROOT, 'programs');
 const INSTANCES = path.join(ROOT, 'instances');
 const STORE = path.join(ROOT, 'launcher.json');
@@ -147,7 +147,7 @@ async function doStart(i) {
   if (useDefault) port = g.port;
   else {
     i.own = true;
-    port = await freePort(i.port && i.port !== g.port ? i.port : g.port + 1);
+    port = await freePort(i.port && i.port !== g.port ? i.port : g.port + 1000); // +1 chocaría con otro juego (5092, 5093...)
   }
   i.port = port;
   save();
@@ -276,9 +276,11 @@ app.whenReady().then(() => {
   win = new BrowserWindow({
     width: 1320, height: 860, minWidth: 900, minHeight: 600, backgroundColor: '#121016', title: 'Coreus Games', autoHideMenuBar: true,
     icon: path.join(__dirname, 'assets', 'icon.png'),
+    show: !process.env.COREUS_HOME, // en pruebas, sin quitar el foco a lo que esté abierto
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, webviewTag: true },
   });
   win.setMenuBarVisibility(false);
+  if (process.env.COREUS_HOME) win.showInactive();
   win.loadFile(path.join(__dirname, 'ui', 'index.html'));
   setInterval(poll, 2000);
 });
