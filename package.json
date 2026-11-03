@@ -1,0 +1,23 @@
+{
+  "name": "coreus-games",
+  "productName": "Coreus Games",
+  "version": "1.0.0",
+  "description": "Todos los programas de los juegos de Roblox en una sola ventana",
+  "main": "main.js",
+  "author": "Wylo",
+  "scripts": {
+    "start": "electron .",
+    "test": "node test_lib.js",
+    "dist": "electron-builder --win dir"
+  },
+  "build": {
+    "appId": "com.wylo.coreusgames",
+    "productName": "Coreus Games",
+    "files": ["main.js", "preload.js", "lib.js", "ui/**", "assets/**"],
+    "win": { "icon": "assets/icon.png", "target": "dir" }
+  },
+  "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0"
+  }
+}

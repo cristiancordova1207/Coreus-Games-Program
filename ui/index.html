@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es" data-theme="cozy-night">
+<head>
+<meta charset="utf-8">
+<title>Coreus Games</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="bar">
+  <button id="homeTab" class="tab home" title="Inicio"><span>🎮</span><b>COREUS</b></button>
+  <div id="tabs"></div>
+</header>
+<main id="stage">
+  <section id="home">
+    <div class="wrap">
+      <h1>Juegos</h1>
+      <div id="games" class="grid"></div>
+
+      <h1 class="mt">Perfiles <small>instancias guardadas: su cuenta, sus regalos, su TikTok. No se abren solas.</small></h1>
+      <div id="profiles" class="list"></div>
+
+      <h1 class="mt">Ajustes</h1>
+      <div class="card row">
+        <div class="grow"><b>Guardar pestañas</b><p>Al volver a abrir Coreus Games, reabre las pestañas que tenías.</p></div>
+        <button id="saveTabs" class="toggle" aria-label="Guardar pestañas"></button>
+      </div>
+      <div class="card row">
+        <div class="grow"><b>Tema</b></div>
+        <div id="themes" class="dots">
+          <button data-t="cozy-night" title="Cozy Night" style="background:#b9a6f6"></button>
+          <button data-t="cozy-day" title="Cozy Day" style="background:#f7f1e8"></button>
+          <button data-t="midnight" title="Midnight" style="background:#6fd3ff"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="views"></div>
+</main>
+
+<dialog id="dlg"><form method="dialog" id="dlgForm"></form></dialog>
+<div id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
