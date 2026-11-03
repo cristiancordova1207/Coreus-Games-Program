@@ -5,7 +5,7 @@
 --   "off"      cámara normal de Roblox
 -- Cinemático (workspace.Cinematic = WalkId): un director corta entre tomas distintas cada vez: frente, lateral, espalda,
 -- suelo, cenital, paparazzi, dron, helicóptero (de lejos con zoom enorme) y cámaras de seguridad. Nunca el mismo orden y no
--- siempre las mismas: a veces no hay helicóptero, a veces no hay seguridad. Al acabar vuelve suave a donde estaba.
+-- siempre las mismas: a veces no hay helicóptero, a veces no hay seguridad. Al acabar corta directo a la cámara que esté puesta.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
@@ -313,7 +313,7 @@ local function makePlan(total)
 		local bag = { "frente", "lado", "espalda", "suelo", "cenital", "paparazzi", "dron" }
 		local plan, used = {}, 0
 		local specials = {}
-		if rng:NextNumber() < 0.6 then table.insert(specials, { name = "heli", dur = rng:NextNumber(3.6, 4.8) }) end
+		if rng:NextNumber() < 0.6 then table.insert(specials, { name = "heli", dur = rng:NextNumber(4, 5) }) end
 		if rng:NextNumber() < 0.5 then table.insert(specials, { name = "seguridad", dur = rng:NextNumber(3.2, 4.2) }) end
 		for _, s in ipairs(specials) do table.insert(plan, s) used += s.dur end
 		while used < total do
@@ -379,6 +379,7 @@ end
 
 local blend, target, lastMode, shotKey, giantStart = 1, nil, nil, nil, 0
 local plan, planI, shot, megaCut, photoN, photoCut, photoHide = nil, 0, nil, false, 0, 0, 0
+local HELI_MIN = 4
 local function nextShot()
 	planI += 1
 	if not plan or planI > #plan then plan, planI = makePlan(5), 1 end
@@ -402,14 +403,16 @@ RunService.RenderStepped:Connect(function(dt)
 		return
 	end
 	local root = byId(workspace:GetAttribute("Cinematic"))
+	-- la toma de helicóptero dura lo mínimo aunque el cinemático acabe o entre otro
+	if shot and shot.name == "heli" and target and target.Parent and os.clock() - shot.t0 < HELI_MIN then root = target end
 	local giant = giantRoot()
 	local photo = photoRoot()
 	local party = workspace:GetAttribute("Party") == true
 	local tick = math.floor(os.clock() / PARTY_SHOT)
 	local pshot = party and tick % #PARTY_SHOTS + 1 or 0
 	local key = photo and "foto" or giant and "g" or root and "c" or party and ("p" .. pshot) or "m"
-	if key ~= shotKey then -- cambia de plano: transición suave
-		if shotKey then blend = 0 end
+	if key ~= shotKey then -- cambia de plano: transición suave, menos al acabar un cinemático, que corta directo
+		if shotKey then blend = (shotKey == "c" or shotKey == "g" or shotKey == "foto") and 1 or 0 end
 		if key == "g" or key == "foto" then giantStart = os.clock() photoN, photoCut = 0, os.clock() end
 		shotKey = key
 		if key ~= "c" then setHud(nil) hideNear(nil) end
@@ -422,7 +425,7 @@ RunService.RenderStepped:Connect(function(dt)
 	end
 	camera.CameraType = Enum.CameraType.Scriptable
 	if root ~= target then -- empieza o termina un cinemático
-		target, blend = root, root and 1 or 0
+		target, blend = root, 1
 		if root then
 			plan, planI = makePlan(root.Parent:GetAttribute("CineDur") or 12.5), 0
 			nextShot()

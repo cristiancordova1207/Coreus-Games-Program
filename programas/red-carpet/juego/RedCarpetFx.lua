@@ -397,17 +397,20 @@ local function photoStep(now)
 	end
 end
 
--- ---------- helicóptero con foco durante el cinemático ----------
-local heli, beam, heliAngle
+-- ---------- helicóptero con foco: sale con el primer cinemático y se queda volando sobre la alfombra ----------
+local HELI_REST = Vector3.new(0, 0, -20)
+local heli, beam, heliAngle, heliC, heliTip
 local function heliStep(now, dt)
 	local star = focus()
-	local want = star and star:FindFirstChild("HumanoidRootPart") and workspace:GetAttribute("Interior") ~= true and workspace:GetAttribute("Cinematic") ~= ""
-	if want and not heli then
+	local root = workspace:GetAttribute("Cinematic") ~= "" and star and star:FindFirstChild("HumanoidRootPart")
+	local indoor = workspace:GetAttribute("Interior") == true
+	if root and not indoor and not heli then
 		local src = RS:FindFirstChild("RCModels") and RS.RCModels:FindFirstChild("Helicoptero")
 		if src then
 			heli = src:Clone()
 			heli.Parent = workspace
 			heliAngle = rng:NextNumber(0, 6.28)
+			heliC, heliTip = root.Position, root.Position
 			local a0 = Instance.new("Attachment")
 			a0.Parent = heli.Faro
 			local tip = Instance.new("Part")
@@ -421,21 +424,23 @@ local function heliStep(now, dt)
 			beam.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 0.9) })
 			beam.Parent = heli
 		end
-	elseif not want and heli then
+	elseif indoor and heli then
 		heli:Destroy()
 		heli, beam = nil, nil
 	end
-	if heli and want then
-		local p = star.HumanoidRootPart.Position
+	if heli then
+		local p = root and root.Position or HELI_REST
+		heliC += (p - heliC) * (1 - math.exp(-dt * 0.6)) -- sin saltos al cambiar de protagonista
+		heliTip += (p - heliTip) * (1 - math.exp(-dt * (root and 5 or 0.6)))
 		heliAngle += dt * 0.32
-		local pos = p + Vector3.new(math.sin(heliAngle) * 40, 66, math.cos(heliAngle) * 40 - 12)
-		local dir = (p - pos) * Vector3.new(1, 0, 1)
+		local pos = heliC + Vector3.new(math.sin(heliAngle) * 40, 66, math.cos(heliAngle) * 40 - 12)
+		local dir = (heliTip - pos) * Vector3.new(1, 0, 1)
 		local cf = CFrame.lookAt(pos, pos + (dir.Magnitude > 1 and dir.Unit or Vector3.zAxis)) * CFrame.Angles(math.rad(-9), 0, math.rad(6))
 		heli:PivotTo(cf)
 		for _, pa in ipairs(heli.Rotor:GetChildren()) do
 			pa.CFrame = cf * CFrame.new(0, 4.3, 0) * CFrame.Angles(0, now * 26 + (pa.Size.X > 5 and 0 or 0), 0)
 		end
-		heli.Punta.Position = p
+		heli.Punta.Position = heliTip
 	end
 end
 
