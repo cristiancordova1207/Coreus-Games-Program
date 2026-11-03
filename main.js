@@ -1,6 +1,6 @@
 // Coreus Games: abre los programas de los juegos de Roblox en pestañas dentro de la misma ventana.
 // Cada pestaña es un .exe con COREUS_PORT y COREUS_DATA, y su panel web dentro de un <webview>.
-const { app, BrowserWindow, ipcMain: ipc, shell } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain: ipc, shell } = require('electron');
 const { spawn, execFile } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -9,7 +9,7 @@ const http = require('http');
 const net = require('net');
 const os = require('os');
 const path = require('path');
-const { GAMES, gameById, instanceDirName, stateInfo, nextName, setConfigUser } = require('./lib');
+const { GAMES, gameById, instanceDirName, stateInfo, nextName, setConfigUser, portPid } = require('./lib');
 
 const ROOT = process.env.COREUS_HOME || path.join(os.homedir(), 'CoreusGames'); // fuera de AppData: las apps empaquetadas la redirigen
 const PROGRAMS = path.join(ROOT, 'programs');
@@ -132,6 +132,33 @@ function waitReady(port, proc) {
 function kill(pid) {
   return new Promise((res) => execFile('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true }, () => res()));
 }
+// El puerto de siempre está ocupado por algo que no es de Coreus, normalmente el programa abierto por su acceso directo.
+// Sin preguntar saldría una copia sin ranking ni jugadores mientras el otro sigue mandando al juego. true = usar el puerto de siempre.
+async function resolveBusyPort(g) {
+  const state = await getJson(`http://127.0.0.1:${g.port}/api/state`).catch(() => null);
+  const info = state && stateInfo(state);
+  const onAir = !!info && (info.live || info.connecting);
+  const pid = state && !onAir ? await new Promise((res) => execFile('netstat', ['-ano', '-p', 'TCP'], { windowsHide: true }, (e, out) => res(e ? null : portPid(out, g.port)))) : null;
+  const buttons = [...(pid ? ['Cerrarlo y abrirlo aquí'] : []), 'Abrir una copia aparte', 'Cancelar'];
+  const message = !state ? `Otra aplicación está usando el puerto ${g.port}, el que necesita ${g.name}.`
+    : onAir ? `${g.name} está abierto fuera de Coreus y en directo.`
+    : `${g.name} ya está abierto fuera de Coreus.`;
+  const copy = 'Una copia aparte empieza sin tu ranking ni tus jugadores y no usa las URLs de tus overlays.';
+  const detail = !state ? copy
+    : onAir ? `No se puede cerrar desde aquí mientras dure el directo. ${copy}`
+    : `Ese programa sigue mandando personajes a tu juego, así que lo que hagas en otra pestaña puede no llegar. ${copy}`;
+  const opts = { type: 'warning', title: 'Coreus Games', message, detail, buttons, defaultId: pid ? 0 : buttons.length - 1, cancelId: buttons.length - 1, noLink: true };
+  const answer = process.env.COREUS_DIALOG ? Number(process.env.COREUS_DIALOG) // pruebas: el botón que se pulsaría
+    : (await dialog.showMessageBox(win, opts)).response;
+  if (buttons[answer] === 'Cancelar') throw new Error('cancelled');
+  if (buttons[answer] !== 'Cerrarlo y abrirlo aquí') return false;
+  await kill(pid);
+  for (let t = 0; t < 20; t++) {
+    if (await portFree(g.port)) return true;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error('port_busy');
+}
 const starts = new Map();
 function start(i) {
   if (running.has(i.id)) return Promise.resolve(running.get(i.id));
@@ -142,7 +169,8 @@ async function doStart(i) {
   const g = gameById(i.game);
   const exe = await ensureExe(i.game);
   // La primera instancia usa el puerto y los datos de siempre (overlays y ajustes intactos). Las demás, los suyos.
-  const useDefault = !i.own && await portFree(g.port) && ![...running.keys()].some((id) => { const o = inst(id); return o && o.game === i.game && !o.own; });
+  let useDefault = !i.own && ![...running.keys()].some((id) => { const o = inst(id); return o && o.game === i.game && !o.own; });
+  if (useDefault && !await portFree(g.port)) useDefault = await resolveBusyPort(g);
   let port;
   if (useDefault) port = g.port;
   else {

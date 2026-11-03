@@ -48,4 +48,9 @@ function setConfigUser(file, user) {
   fs.writeFileSync(t, JSON.stringify(c, null, 2));
   fs.renameSync(t, file);
 }
-module.exports = { GAMES, gameById, instanceDirName, stateInfo, nextName, setConfigUser };
+// salida de `netstat -ano -p TCP` -> quién escucha en ese puerto. La columna de estado cambia con el idioma de Windows: lo que escucha tiene el remoto en :0
+function portPid(netstat, port) {
+  const m = String(netstat).match(new RegExp(`^\\s*TCP\\s+\\S+:${port}\\s+\\S+:0\\s+\\S+\\s+(\\d+)\\s*$`, 'm'));
+  return m ? Number(m[1]) : null;
+}
+module.exports = { GAMES, gameById, instanceDirName, stateInfo, nextName, setConfigUser, portPid };

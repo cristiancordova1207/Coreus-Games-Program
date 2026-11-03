@@ -1,7 +1,7 @@
 // Coreus Games · pestañas, juegos y perfiles
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const ERR = { offline: 'Sin internet y el programa aún no está descargado.', timeout: 'El programa tarda demasiado en abrir.', exited: 'El programa se cerró al abrir.', bad_download: 'La descarga llegó dañada. Vuelve a intentarlo.', no_port: 'No hay puertos libres.' };
+const ERR = { offline: 'Sin internet y el programa aún no está descargado.', timeout: 'El programa tarda demasiado en abrir.', exited: 'El programa se cerró al abrir.', bad_download: 'La descarga llegó dañada. Vuelve a intentarlo.', no_port: 'No hay puertos libres.', cancelled: 'No se abrió: el programa sigue abierto fuera de Coreus.', port_busy: 'No se pudo cerrar el programa que está abierto fuera de Coreus.' };
 
 let S = null;
 let status = {};
